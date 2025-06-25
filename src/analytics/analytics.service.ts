@@ -105,7 +105,7 @@ export class AnalyticsService {
         }
       } catch (error) {
         this.logger.error(
-          `Error aggregating analytics for campaign ${campaign.id}: ${error.message}`,
+          `Error aggregating analytics for campaign ${campaign.id}. Could not send to Kemet: ${error.message}`,
         );
       }
     }
