@@ -8,9 +8,10 @@ import {
   // Patch,
   // Delete,
   NotFoundException,
+  Patch,
 } from "@nestjs/common";
 import { CampaignService } from "./campaign.service";
-import { CreateCampaignDto } from "./campaign.dto";
+import { CreateCampaignDto, UpdateCampaignDto } from "./campaign.dto";
 // import { CreateProductDto } from "src/product/product.dto";
 
 @Controller("campaign")
@@ -85,10 +86,10 @@ export class CampaignController {
   //   );
   // }
 
-  // @Patch(":id")
-  // update(@Param("id") id: string, @Body() dto: UpdateCampaignDto) {
-  //   return this.campaignService.update(id, dto);
-  // }
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() dto: UpdateCampaignDto) {
+    return this.campaignService.update(id, dto);
+  }
 
   // @Delete(":id")
   // delete(@Param("id") id: string) {

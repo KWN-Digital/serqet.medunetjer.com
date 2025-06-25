@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
-import { CreateCampaignDto } from "./campaign.dto";
+import { CreateCampaignDto, UpdateCampaignDto } from "./campaign.dto";
 import { CacheNamespace, Campaign, Distribution } from "@prisma/client";
 
 // import { CampaignWithRules } from "src/redirect/redirect.service";
@@ -117,5 +117,19 @@ export class CampaignService {
     const key = this.cacheKey(namespace, slug);
     this.logger.log(`Invalidating cache for key: ${key}`);
     await this.redis.del(key);
+  }
+
+  async update(id: string, dto: UpdateCampaignDto) {
+    if (!id || !dto)
+      throw new Error("ID and data are required to update a campaign");
+    const campaign = await this.prisma.campaign.update({
+      where: { id },
+      data: {
+        ...dto,
+      },
+    });
+    await this.cache(campaign);
+    this.logger.log(`Updated campaign with ID: ${id}`);
+    return campaign;
   }
 }
