@@ -71,7 +71,7 @@ export class AnalyticsService {
     });
   }
 
-  @Cron(CronExpression.EVERY_5_SECONDS)
+  @Cron(CronExpression.EVERY_HOUR)
   async aggregateAnalytics() {
     this.logger.log("Aggregating analytics...");
 
