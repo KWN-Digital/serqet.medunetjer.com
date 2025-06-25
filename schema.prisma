@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URI")
+}
+
+enum CacheNamespace {
+  campaign
+  product
+  distribution
+  analytics
+}
+
+enum ProductType {
+  api_integration
+  affiliate_link
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+}
+
+model Distribution {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  product        Product        @relation(fields: [productId], references: [id])
+  productId      String         @db.ObjectId
+  campaign       Campaign?      @relation("CampaignDistributions", fields: [campaignId], references: [id])
+  campaignId     String?        @db.ObjectId
+  priority       Int            @default(0)
+  status         String         @default("scheduled") // scheduled, active, ended
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  expiresAt      DateTime?
+  cacheKey       String?
+  cacheNamespace CacheNamespace @default(distribution)
+  impressions    Impression[]   @relation("DistributionImpressions")
+  clicks         Click[]        @relation("DistributionClicks")
+  conversions    Conversion[]   @relation("DistributionConversions")
+  analytics      Analytics[]    @relation("DistributionAnalytics")
+
+  @@index([productId], name: "idx_productId")
+  @@index([cacheKey], name: "idx_cacheKey")
+}
+
+type Session {
+  referer         String?
+  userAgent       String?
+  ip              String?
+  ipHash          String?
+  location        String?
+  deviceType      String?
+  isBot           Boolean? @default(false)
+  confidenceScore Float?
+}
+
+model Impression {
+  id                  String        @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId           String
+  session             Session
+  metadata            Json?
+  updatedAt           DateTime      @updatedAt
+  createdAt           DateTime      @default(now())
+  expireAt            DateTime?
+  distributionId      String?       @db.ObjectId
+  distribution        Distribution? @relation(name: "DistributionImpressions", fields: [distributionId], references: [id])
+  externalPlacementId String?
+  campaignId          String?       @db.ObjectId // for API campaigns
+  campaign            Campaign?     @relation(name: "CampaignImpressions", fields: [campaignId], references: [id])
+
+  @@index([distributionId, createdAt], name: "idx_distributionId_createdAt")
+  @@index([sessionId], name: "idx_sessionId")
+}
+
+model Click {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId      String
+  session        Session
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  expireAt       DateTime?
+  conversions    Conversion[]
+  distributionId String?       @db.ObjectId
+  distribution   Distribution? @relation(name: "DistributionClicks", fields: [distributionId], references: [id])
+
+  @@index([distributionId], name: "idx_distributionId")
+  @@index([sessionId], name: "idx_sessionId")
+}
+
+model Conversion {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  clickId        String?       @db.ObjectId
+  click          Click?        @relation(fields: [clickId], references: [id])
+  session        Session?
+  sessionId      String
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  expireAt       DateTime?
+  distributionId String?       @db.ObjectId
+  distribution   Distribution? @relation(name: "DistributionConversions", fields: [distributionId], references: [id])
+
+  @@index([distributionId], name: "idx_campaignId")
+  @@index([sessionId], name: "idx_sessionId")
+}
+
+model Campaign {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  slug               String         @unique
+  status             CampaignStatus @default(draft) // draft, paused, active, archived
+  externalCampaignId String? // for API campaigns
+  metadata           Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  impressions        Impression[]   @relation("CampaignImpressions")
+  analytics          Analytics[]    @relation("CampaignAnalytics")
+
+  distributions Distribution[] @relation("CampaignDistributions")
+}
+
+model Product {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  disabled           Boolean        @default(false)
+  externalProductId  String         @unique
+  externalCampaignId String // for API products
+  type               ProductType    @default(affiliate_link)
+  cacheKey           String?
+  cacheNamespace     CacheNamespace @default(product)
+  affiliate_link     String? // for affiliate products
+  api_integration    String? // for API products
+  metadata           Json? // for placment products
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  distributions      Distribution[]
+
+  @@index([cacheKey], name: "idx_cacheKey")
+  @@index([externalCampaignId], name: "idx_campaignId")
+}
+
+model Analytics {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  distributionId String?        @db.ObjectId
+  distribution   Distribution?  @relation(name: "DistributionAnalytics", fields: [distributionId], references: [id])
+  scope          String // "product", "distribution", "campaign"
+  impressions    Int            @default(0)
+  clicks         Int            @default(0)
+  conversions    Int            @default(0)
+  uniqueClicks   Int            @default(0) // ✅ Add this
+  ctr            Float          @default(0.0)
+  bucket         String? // e.g. "2025-06-08", "hourly", etc.
+  updatedAt      DateTime       @updatedAt
+  cacheKey       String?
+  cacheNamespace CacheNamespace @default(analytics)
+  campaign       Campaign       @relation(name: "CampaignAnalytics", fields: [campaignId], references: [id])
+  campaignId     String         @db.ObjectId // for API campaigns
+
+  @@unique([scope, campaignId, bucket], name: "scope_campaignId_bucket")
+  @@unique([scope, distributionId, bucket], name: "scope_distributionId_bucket")
+}
+
+model EventLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String // "impression", "click", "conversion"
+  campaignId  String?  @db.ObjectId
+  productId   String?  @db.ObjectId
+  placementId String?  @db.ObjectId
+  session     Session?
+  sessionId   String
+  ip          String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+  meta        Json?
+
+  @@index([campaignId, timestamp], name: "idx_campaignId")
+  @@index([sessionId], name: "idx_productId")
+}
+
+model AuditLog {
+  id         String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String?
+  action     AuditAction
+  resource   String
+  resourceId String
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([userId], name: "idx_userId")
+  @@index([resourceId], name: "idx_resourceId")
+}

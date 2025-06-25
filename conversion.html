@@ -1,0 +1,13 @@
+<script type="text/javascript">
+  const params = new URLSearchParams(window.location.search);
+  const clickId = params.get("clickId");
+
+  if (clickId) {
+    const img = document.createElement("img");
+    img.src = `https://affiliate.medunetjer.com/conversion?clickId=${clickId}`;
+    img.width = 1;
+    img.height = 1;
+    img.style.display = "none";
+    document.body.appendChild(img);
+  }
+</script>
