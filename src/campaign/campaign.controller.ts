@@ -30,6 +30,9 @@ export class CampaignController {
   findByExternalCampaignId(
     @Param("externalCampaignId") externalCampaignId: string,
   ) {
+    if (!externalCampaignId) {
+      throw new NotFoundException("External campaign ID is required");
+    }
     return this.campaignService.findByExternalCampaignId(externalCampaignId);
   }
 

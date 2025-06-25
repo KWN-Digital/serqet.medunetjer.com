@@ -90,12 +90,25 @@ export class CampaignService {
   async create(dto: CreateCampaignDto) {
     if (!dto) throw new Error("Data is required to create a campaign");
 
+    // check if campaign with the same slug already exists
+    const existingCampaign = await this.prisma.campaign.findFirst({
+      where: { slug: dto.slug },
+    });
+    if (existingCampaign) {
+      this.logger.warn(`Campaign with slug ${dto.slug} already exists`);
+      return existingCampaign;
+    }
+
     // Step 1: Create campaign
     const campaign = await this.prisma.campaign.create({
       data: {
         ...dto,
       },
     });
+
+    if (!campaign) {
+      throw new Error("Failed to create campaign");
+    }
 
     // Step 2: Cache the campaign
     await this.cache(campaign);
