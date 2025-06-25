@@ -8,7 +8,9 @@ import { Request } from "express";
  */
 @Injectable({ scope: Scope.REQUEST })
 export class SessionService {
-  constructor(@Inject(REQUEST) private readonly request: Request) {}
+  constructor(
+    @Inject(REQUEST) private readonly request: Request & { sessionId?: string },
+  ) {}
 
   private _sessionId: string;
 
@@ -21,7 +23,7 @@ export class SessionService {
   }
 
   getQuery(
-    query?: string
+    query?: string,
   ): Record<string, string> | string | string[] | undefined {
     if (query) {
       const value = this.request.query[query]?.toString();
@@ -47,6 +49,8 @@ export class SessionService {
     if (this._sessionId) return this._sessionId;
 
     this._sessionId =
+      this.request?.sessionId ||
+      this.request.cookies?.sessionId ||
       this.request.query.sessionId?.toString() ||
       (this.getQuery("sessionid") as string) ||
       this.generateSessionId();
@@ -121,7 +125,7 @@ export class SessionService {
 
     if (!isBot) {
       isBot = botPatterns.some((pattern) =>
-        pattern.test(this.getHeaders("user-agent") as string)
+        pattern.test(this.getHeaders("user-agent") as string),
       );
     }
 
