@@ -58,7 +58,7 @@ export class ImpressionService {
         `No empty impressions found for campaign ${campaignId} and distribution ${distributionId}, creating a new one`,
       );
 
-      await this.prisma.impression.create({
+      return await this.prisma.impression.create({
         data: {
           sessionId,
           session: session || {},
@@ -74,7 +74,6 @@ export class ImpressionService {
           },
         },
       });
-      return;
     }
 
     await this.prisma.impression.update({
