@@ -4,6 +4,7 @@ import { CampaignService } from "src/campaign/campaign.service";
 // import { AnalyticsService } from "src/analytics/analytics.service";
 import { CreateImpressionDto } from "./impression.dto";
 import { SessionDto } from "src/session/session.dto";
+import moment from "moment";
 
 @Injectable()
 export class ImpressionService {
@@ -40,6 +41,8 @@ export class ImpressionService {
     campaignId: string,
     { sessionId, ...session }: SessionDto,
   ) {
+    const startOfDay = moment().startOf("day").toDate();
+    const endOfDay = moment().endOf("day").toDate();
     // find empty impressions for the distribution
     const [emptyImpression] = await this.prisma.impression.findMany({
       where: {
@@ -48,6 +51,11 @@ export class ImpressionService {
         },
         distributionId: {
           isSet: false,
+        },
+        // within the current day
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
         },
       },
     });
