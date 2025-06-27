@@ -125,6 +125,7 @@ export class AnalyticsService {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.KEMET_API_SECRET}`,
             },
             body: JSON.stringify({
               ...summary,

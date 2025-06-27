@@ -185,6 +185,12 @@ export class ProductService {
 
     const response = await fetch(
       `${process.env.KEMET_API_URL}/product/${externalProductId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.KEMET_API_SECRET}`,
+        },
+      },
     );
     if (!response.ok) {
       this.logger.error(
