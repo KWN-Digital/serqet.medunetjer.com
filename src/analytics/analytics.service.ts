@@ -214,7 +214,7 @@ export class AnalyticsService {
     const bucket = moment().startOf("day").format("YYYY-MM-DD"); // Daily bucket
 
     // Aggregate analytics for each campaign
-    for (const campaign of campaigns) {
+    for await (const campaign of campaigns) {
       try {
         const campaignSummary = await this.aggregateCampaignAnalytics(
           campaign.id,
@@ -223,7 +223,7 @@ export class AnalyticsService {
         await this.sendCampaignToKemet(campaign, campaignSummary);
 
         const distributions = campaign.distributions || [];
-        for (const distribution of distributions) {
+        for await (const distribution of distributions) {
           if (!distribution.product) {
             this.logger.warn(
               `No product found for distribution ${distribution.id} in campaign ${campaign.id}. Skipping product analytics.`,
