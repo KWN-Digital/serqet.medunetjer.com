@@ -34,7 +34,7 @@ enum AuditAction {
 
 model Distribution {
   id             String         @id @default(auto()) @map("_id") @db.ObjectId
-  product        Product        @relation(fields: [productId], references: [id])
+  product        Product        @relation(name: "ProductDistributions", fields: [productId], references: [id])
   productId      String         @db.ObjectId
   campaign       Campaign?      @relation("CampaignDistributions", fields: [campaignId], references: [id])
   campaignId     String?        @db.ObjectId
@@ -79,6 +79,8 @@ model Impression {
   externalPlacementId String?
   campaignId          String?       @db.ObjectId // for API campaigns
   campaign            Campaign?     @relation(name: "CampaignImpressions", fields: [campaignId], references: [id])
+  productId           String?       @db.ObjectId // for API products
+  product             Product?      @relation(name: "ProductImpressions", fields: [productId], references: [id])
 
   @@index([distributionId, createdAt], name: "idx_distributionId_createdAt")
   @@index([sessionId], name: "idx_sessionId")
@@ -93,8 +95,12 @@ model Click {
   updatedAt      DateTime      @updatedAt
   expireAt       DateTime?
   conversions    Conversion[]
+  campaignId     String?       @db.ObjectId // for API campaigns
+  campaign       Campaign?     @relation(name: "CampaignClicks", fields: [campaignId], references: [id])
   distributionId String?       @db.ObjectId
   distribution   Distribution? @relation(name: "DistributionClicks", fields: [distributionId], references: [id])
+  productId      String?       @db.ObjectId // for API products
+  product        Product?      @relation(name: "ProductClicks", fields: [productId], references: [id])
 
   @@index([distributionId], name: "idx_distributionId")
   @@index([sessionId], name: "idx_sessionId")
@@ -110,8 +116,12 @@ model Conversion {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   expireAt       DateTime?
+  campaignId     String?       @db.ObjectId // for API campaigns
+  campaign       Campaign?     @relation(name: "CampaignConversions", fields: [campaignId], references: [id])
   distributionId String?       @db.ObjectId
   distribution   Distribution? @relation(name: "DistributionConversions", fields: [distributionId], references: [id])
+  product        Product?      @relation(name: "ProductConversions", fields: [productId], references: [id])
+  productId      String?       @db.ObjectId // for API products
 
   @@index([distributionId], name: "idx_campaignId")
   @@index([sessionId], name: "idx_sessionId")
@@ -127,8 +137,9 @@ model Campaign {
   updatedAt          DateTime       @updatedAt
   impressions        Impression[]   @relation("CampaignImpressions")
   analytics          Analytics[]    @relation("CampaignAnalytics")
-
-  distributions Distribution[] @relation("CampaignDistributions")
+  clicks             Click[]        @relation("CampaignClicks")
+  conversions        Conversion[]   @relation("CampaignConversions")
+  distributions      Distribution[] @relation("CampaignDistributions")
 }
 
 model Product {
@@ -144,7 +155,11 @@ model Product {
   metadata           Json? // for placment products
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
-  distributions      Distribution[]
+  impressions        Impression[]   @relation("ProductImpressions")
+  distributions      Distribution[] @relation("ProductDistributions")
+  analytics          Analytics[]    @relation("ProductAnalytics")
+  clicks             Click[]        @relation("ProductClicks")
+  conversions        Conversion[]   @relation("ProductConversions")
 
   @@index([cacheKey], name: "idx_cacheKey")
   @@index([externalCampaignId], name: "idx_campaignId")
@@ -166,9 +181,12 @@ model Analytics {
   cacheNamespace CacheNamespace @default(analytics)
   campaign       Campaign       @relation(name: "CampaignAnalytics", fields: [campaignId], references: [id])
   campaignId     String         @db.ObjectId // for API campaigns
+  product        Product?       @relation(name: "ProductAnalytics", fields: [productId], references: [id])
+  productId      String?        @db.ObjectId // for API products
 
   @@unique([scope, campaignId, bucket], name: "scope_campaignId_bucket")
   @@unique([scope, distributionId, bucket], name: "scope_distributionId_bucket")
+  @@unique([scope, productId, bucket], name: "scope_productId_bucket")
 }
 
 model EventLog {

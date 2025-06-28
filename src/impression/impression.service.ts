@@ -5,6 +5,7 @@ import { CampaignService } from "src/campaign/campaign.service";
 import { CreateImpressionDto } from "./impression.dto";
 import { SessionDto } from "src/session/session.dto";
 import moment from "moment";
+import { Prisma } from "@prisma/client";
 
 @Injectable()
 export class ImpressionService {
@@ -38,43 +39,41 @@ export class ImpressionService {
 
   async fill(
     distributionId: string,
-    campaignId: string,
+    { campaignId, productId }: { campaignId?: string; productId?: string },
     { sessionId, ...session }: SessionDto,
   ) {
     const startOfDay = moment().startOf("day").toDate();
     const endOfDay = moment().endOf("day").toDate();
+
+    const findImpression: Prisma.ImpressionWhereInput = {
+      distributionId: {
+        isSet: false,
+      },
+      createdAt: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    };
+
+    if (productId) {
+      findImpression.campaign = {
+        id: campaignId,
+      };
+    }
+
     // find empty impressions for the distribution
     const [emptyImpression] = await this.prisma.impression.findMany({
       where: {
-        campaign: {
-          id: campaignId,
-        },
-        distributionId: {
-          isSet: false,
-        },
-        // within the current day
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        ...findImpression,
+        // sessionId,
       },
     });
-
-    if (!emptyImpression?.id) {
-      // create an impression for the campaign and distribution
-      this.logger.log(
-        `No empty impressions found for campaign ${campaignId} and distribution ${distributionId}, creating a new one`,
-      );
-
-      return await this.prisma.impression.create({
+    if (emptyImpression) {
+      return await this.prisma.impression.update({
+        where: {
+          id: emptyImpression.id,
+        },
         data: {
-          sessionId,
-          session: session || {},
-          campaign: {
-            connect: {
-              id: campaignId,
-            },
-          },
           distribution: {
             connect: {
               id: distributionId,
@@ -84,22 +83,46 @@ export class ImpressionService {
       });
     }
 
-    await this.prisma.impression.update({
-      where: {
-        id: emptyImpression.id,
-      },
-      data: {
-        distribution: {
-          connect: {
-            id: distributionId,
-          },
+    try {
+      await this.prisma.distribution.update({
+        where: { id: distributionId },
+        data: {
+          updatedAt: new Date(),
+        },
+      });
+    } catch (error) {}
+
+    // create an impression for the campaign and distribution
+    this.logger.log(
+      `No empty impressions found for ${campaignId ? "campaign" : "product"} ${campaignId ? campaignId : productId} and distribution ${distributionId}, creating a new one`,
+    );
+    const data: Prisma.ImpressionCreateInput = {
+      sessionId,
+      session: session || {},
+      distribution: {
+        connect: {
+          id: distributionId,
         },
       },
-    });
+    };
 
-    this.logger.log(
-      `Filled impression ${emptyImpression.id} for distribution ${distributionId}`,
-    );
+    if (campaignId) {
+      data.campaign = {
+        connect: {
+          id: campaignId,
+        },
+      };
+    }
+
+    if (productId) {
+      data.product = {
+        connect: {
+          id: productId,
+        },
+      };
+    }
+
+    return await this.prisma.impression.create({ data });
   }
 
   // async recordImpression({

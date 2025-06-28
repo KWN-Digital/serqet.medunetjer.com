@@ -2,7 +2,13 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 import { CreateCampaignDto, UpdateCampaignDto } from "./campaign.dto";
-import { CacheNamespace, Campaign, Distribution } from "@prisma/client";
+import {
+  CacheNamespace,
+  Campaign,
+  Distribution,
+  Prisma,
+  Product,
+} from "@prisma/client";
 
 // import { CampaignWithRules } from "src/redirect/redirect.service";
 // import { CreateProductDto } from "src/product/product.dto";
@@ -20,13 +26,20 @@ export class CampaignService {
     return `${CacheNamespace.campaign}:${resource}:${resourceId}`;
   }
 
-  async findAll(): Promise<Campaign[]> {
-    const campaigns = await this.prisma.campaign.findMany();
+  async findAll(
+    where: Prisma.CampaignWhereInput,
+    include?: Prisma.CampaignInclude,
+  ): Promise<
+    (Campaign & { distributions?: (Distribution & { product?: Product })[] })[]
+  > {
+    const campaigns = await this.prisma.campaign.findMany({
+      where,
+      include,
+    });
     if (!campaigns || campaigns.length === 0) {
       this.logger.warn("No campaigns found");
       return [];
     }
-    this.logger.log(`Found ${campaigns.length} campaigns`);
     return campaigns;
   }
 

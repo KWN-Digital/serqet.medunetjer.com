@@ -83,8 +83,11 @@ export class RedirectService {
     if (!url) {
       throw new NotFoundException("No URL found for the product type");
     }
-    this.click.track(id, dto);
-    campaignId && this.impression.fill(id, campaignId, dto);
+    campaignId && this.click.track(id, campaignId, dto);
+    campaignId && this.impression.fill(id, { campaignId }, dto);
+    campaignId &&
+      product.id &&
+      this.impression.fill(id, { productId: product.id, campaignId }, dto);
 
     return url;
   }
