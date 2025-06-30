@@ -184,9 +184,15 @@ model Analytics {
   product        Product?       @relation(name: "ProductAnalytics", fields: [productId], references: [id])
   productId      String?        @db.ObjectId // for API products
 
-  @@unique([scope, campaignId, bucket], name: "scope_campaignId_bucket")
-  @@unique([scope, distributionId, bucket], name: "scope_distributionId_bucket")
-  @@unique([scope, productId, bucket], name: "scope_productId_bucket")
+  // Only keep the unique constraints that work with your data model
+  @@unique([scope, campaignId, bucket], name: "unique_campaign_analytics")
+  @@unique([scope, campaignId, productId, bucket], name: "unique_product_analytics")
+  @@unique([scope, campaignId, distributionId, bucket], name: "unique_distribution_analytics")
+  // Regular indexes for performance
+  @@index([scope, bucket], name: "idx_scope_bucket")
+  @@index([campaignId], name: "idx_campaignId")
+  @@index([productId], name: "idx_productId")
+  @@index([distributionId], name: "idx_distributionId")
 }
 
 model EventLog {

@@ -193,6 +193,7 @@ export class ProductService {
       },
     );
     if (!response.ok) {
+      this.logger.error(response.statusText);
       this.logger.error(
         `Failed to fetch Kemet product with external ID: ${externalProductId}`,
       );

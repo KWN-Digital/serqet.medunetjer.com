@@ -15,7 +15,8 @@ export class AnalyticsService {
   ) {}
 
   findMany(where: {
-    scope?: "campaign" | "distribution";
+    scope?: "campaign" | "distribution" | "product";
+    productId?: string;
     campaignId?: string;
     distributionId?: string;
     bucket?: string;
@@ -23,7 +24,6 @@ export class AnalyticsService {
     return this.prisma.analytics.findMany({
       where: {
         ...where,
-        scope: where.scope || "campaign",
       },
     });
   }
@@ -54,7 +54,6 @@ export class AnalyticsService {
     const [impressions, clicks, conversions, uniqueClicks] = await Promise.all([
       this.prisma.impression.count({
         where: {
-          // distributionId: { in: distributionIds },
           productId,
           createdAt: { gte: startOfDay, lte: endOfDay },
         },
@@ -84,8 +83,9 @@ export class AnalyticsService {
 
     return await this.prisma.analytics.upsert({
       where: {
-        scope_productId_bucket: {
+        unique_product_analytics: {
           scope: "product",
+          campaignId,
           productId,
           bucket,
         },
@@ -127,7 +127,6 @@ export class AnalyticsService {
     const [impressions, clicks, conversions, uniqueClicks] = await Promise.all([
       this.prisma.impression.count({
         where: {
-          // this is different because i'm getting the total number of impressions for the campaign for the day, not just ones claimed by distributions
           campaignId,
           createdAt: { gte: startOfDay, lte: endOfDay },
         },
@@ -154,10 +153,9 @@ export class AnalyticsService {
     ]);
 
     const ctr = impressions > 0 ? clicks / impressions : 0;
-
     return await this.prisma.analytics.upsert({
       where: {
-        scope_campaignId_bucket: {
+        unique_campaign_analytics: {
           scope: "campaign",
           campaignId,
           bucket,
@@ -183,7 +181,7 @@ export class AnalyticsService {
     });
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_HOUR, { name: "aggregateAnalytics" })
   async aggregateAnalytics() {
     this.logger.log(
       `Starting analytics aggregation for ${moment().format("YYYY-MM-DD")}...`,
@@ -250,18 +248,18 @@ export class AnalyticsService {
             summary,
           );
         }
-      } catch (error) {
-        this.logger.warn(
-          `Could not send campaign analytics to Kemet for campaign ${campaign.externalCampaignId}: ${error.message}`,
-        );
-      } finally {
+
         this.logger.log(
           `Analytics for campaign ${campaign.id} have been synced with Kemet Insights.`,
         );
+      } catch (error) {
+        this.logger.error(
+          `Could not send campaign analytics to Kemet for campaign ${campaign.externalCampaignId}: ${error.message}`,
+        );
+      } finally {
+        this.logger.log("Analytics aggregation completed.");
       }
     }
-
-    this.logger.log("Analytics aggregation completed.");
   }
 
   async sendCampaignToKemet(campaign: Campaign, summary?: Analytics) {
