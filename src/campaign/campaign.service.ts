@@ -105,7 +105,7 @@ export class CampaignService {
 
     // check if campaign with the same slug already exists
     const existingCampaign = await this.prisma.campaign.findFirst({
-      where: { slug: dto.slug },
+      where: { url: dto.url },
     });
     if (existingCampaign) {
       this.logger.warn(`Campaign with slug ${dto.slug} already exists`);

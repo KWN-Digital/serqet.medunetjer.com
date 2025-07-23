@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from "class-validator";
+import { IsString, IsOptional, IsUrl } from "class-validator";
 import { CampaignStatus } from "@prisma/client"; // assuming enums exported
 
 export class CreateCampaignDto {
@@ -7,6 +7,9 @@ export class CreateCampaignDto {
 
   @IsString()
   slug: string;
+
+  @IsUrl()
+  url: string;
 }
 
 export class UpdateCampaignDto extends CreateCampaignDto {

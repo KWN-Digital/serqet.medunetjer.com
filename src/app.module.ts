@@ -18,6 +18,7 @@ import { RedirectModule } from "./redirect/redirect.module";
 import { ImpressionModule } from "./impression/impression.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { AnalyticsService } from "./analytics/analytics.service";
+import { CampaignParamService } from "./campaign-param/param.service";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AnalyticsService } from "./analytics/analytics.service";
     ProductService,
     CampaignService,
     AnalyticsService,
+    CampaignParamService,
   ],
 })
 export class AppModule {}

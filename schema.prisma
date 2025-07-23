@@ -34,13 +34,15 @@ enum AuditAction {
 
 model Distribution {
   id             String         @id @default(auto()) @map("_id") @db.ObjectId
-  product        Product        @relation(name: "ProductDistributions", fields: [productId], references: [id])
-  productId      String         @db.ObjectId
+  product        Product?       @relation(name: "ProductDistributions", fields: [productId], references: [id])
+  productId      String?        @db.ObjectId
   campaign       Campaign?      @relation("CampaignDistributions", fields: [campaignId], references: [id])
   campaignId     String?        @db.ObjectId
   priority       Int            @default(0)
   status         String         @default("scheduled") // scheduled, active, ended
   metadata       Json?
+  paramId        String?        @db.ObjectId // for API params
+  param          CampaignParam? @relation("DistributionParams", fields: [paramId], references: [id])
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   expiresAt      DateTime?
@@ -51,8 +53,10 @@ model Distribution {
   conversions    Conversion[]   @relation("DistributionConversions")
   analytics      Analytics[]    @relation("DistributionAnalytics")
 
+  @@unique([campaignId, paramId], name: "campaign_param_unique")
   @@index([productId], name: "idx_productId")
   @@index([cacheKey], name: "idx_cacheKey")
+  @@index([campaignId, productId], name: "campaign_product_unique")
 }
 
 type Session {
@@ -130,16 +134,46 @@ model Conversion {
 model Campaign {
   id                 String         @id @default(auto()) @map("_id") @db.ObjectId
   slug               String         @unique
+  url                String         @unique
   status             CampaignStatus @default(draft) // draft, paused, active, archived
-  externalCampaignId String? // for API campaigns
+  externalCampaignId String? // for API campaign
   metadata           Json?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
   impressions        Impression[]   @relation("CampaignImpressions")
   analytics          Analytics[]    @relation("CampaignAnalytics")
   clicks             Click[]        @relation("CampaignClicks")
   conversions        Conversion[]   @relation("CampaignConversions")
   distributions      Distribution[] @relation("CampaignDistributions")
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model CampaignParam {
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  type               CampaignParamType
+  metadata           Json?
+  placementId        String?           @db.ObjectId // for placement params
+  pageId             String?           @db.ObjectId // for page params
+  postId             String?           @db.ObjectId // for post params
+  siloId             String?           @db.ObjectId // for silo params
+  distributions      Distribution[]    @relation("DistributionParams")
+  externalParamId    String            @unique @db.ObjectId
+  externalCampaignId String            @db.ObjectId
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([type, externalParamId], name: "unique_campaign_param")
+}
+
+enum CampaignParamType {
+  placement
+  product
+  silo
+  location
+  post
+  page
+  tag
+  category
+  schedule
 }
 
 model Product {

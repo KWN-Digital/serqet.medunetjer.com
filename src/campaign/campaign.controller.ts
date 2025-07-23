@@ -44,7 +44,7 @@ export class CampaignController {
   @Post(":externalCampaignId/publish")
   async publish(
     @Param("externalCampaignId") externalCampaignId: string,
-    @Body() dto: { products: string[] },
+    @Body() dto: { products?: string[]; params?: string[] },
   ) {
     const campaign =
       await this.campaignService.findByExternalCampaignId(externalCampaignId);
@@ -59,15 +59,32 @@ export class CampaignController {
     const fail: string[] = [];
 
     // create distributions for each product
-    for await (const externalProductId of dto.products) {
-      const distribution = await this.distribution.fromCampaign(
-        externalCampaignId,
-        externalProductId,
-      );
-      if (distribution) {
-        success++;
-      } else {
-        fail.push(externalProductId);
+    if (dto.products && dto.products?.length > 0) {
+      for await (const externalProductId of dto.products) {
+        const distribution = await this.distribution.fromCampaign(
+          externalCampaignId,
+          externalProductId,
+        );
+        if (distribution) {
+          success++;
+        } else {
+          fail.push(externalProductId);
+        }
+      }
+    }
+
+    // create distributions for each param
+    if (dto.params && dto.params.length > 0) {
+      for await (const externalParamId of dto.params) {
+        const distribution = await this.distribution.fromCampaignParam(
+          externalCampaignId,
+          externalParamId,
+        );
+        if (distribution) {
+          success++;
+        } else {
+          fail.push(externalParamId);
+        }
       }
     }
 

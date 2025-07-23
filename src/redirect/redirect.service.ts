@@ -27,7 +27,6 @@ export class RedirectService {
       if (!campaign || campaign.status !== "active") {
         throw new NotFoundException("Campaign not found or inactive");
       }
-
       const matches = await this.prisma.distribution.findMany({
         where: {
           campaignId: campaign.id,
@@ -38,7 +37,6 @@ export class RedirectService {
           priority: "desc",
         },
       });
-
       if (!matches || matches.length === 0) {
         throw new NotFoundException(
           "No active distributions found for this campaign",
@@ -74,7 +72,9 @@ export class RedirectService {
     const distributions = await this.getCampaignDistributions(campaignSlug);
     const { productId, id, campaignId } =
       await this.weightDistributions(distributions);
-
+    if (!productId) {
+      throw new NotFoundException("No product found for the distribution");
+    }
     const product = await this.product.findById(productId);
     if (!product) {
       throw new NotFoundException("Product not found for the distribution");
@@ -90,5 +90,31 @@ export class RedirectService {
       this.impression.fill(id, { productId: product.id, campaignId }, dto);
 
     return url;
+  }
+
+  async place({ placementId }: { placementId?: string }) {
+    // This method is a placeholder for future implementation
+    // lets look through params to find a matching placementId
+    const distribution = await this.prisma.distribution.findFirst({
+      where: {
+        param: {
+          placementId,
+        },
+        campaign: {
+          status: "active",
+        },
+      },
+      include: {
+        param: true,
+        campaign: true,
+      },
+    });
+
+    if (!distribution) {
+      throw new NotFoundException("No matching distribution found");
+    }
+
+    // Implement the logic for placing the redirect
+    return distribution;
   }
 }

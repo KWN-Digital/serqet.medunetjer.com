@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "src/redis/redis.service";
 import { ProductService } from "src/product/product.service";
 import { DistributionService } from "src/distribution/distribution.service";
+import { CampaignParamService } from "src/campaign-param/param.service";
 
 @Module({
   controllers: [CampaignController],
@@ -14,6 +15,7 @@ import { DistributionService } from "src/distribution/distribution.service";
     RedisService,
     ProductService,
     DistributionService,
+    CampaignParamService,
   ],
   exports: [CampaignService],
 })

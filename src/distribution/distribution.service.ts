@@ -5,6 +5,7 @@ import { CacheNamespace, Distribution } from "@prisma/client";
 import { RedisService } from "src/redis/redis.service";
 import { CampaignService } from "src/campaign/campaign.service";
 import { ProductService } from "src/product/product.service";
+import { CampaignParamService } from "src/campaign-param/param.service";
 
 @Injectable()
 export class DistributionService {
@@ -13,6 +14,7 @@ export class DistributionService {
     private readonly redis: RedisService,
     private readonly campaign: CampaignService,
     private readonly productService: ProductService,
+    private readonly paramService: CampaignParamService,
   ) {}
 
   private cacheKey(resourceId: string, resource = "id"): string {
@@ -124,6 +126,66 @@ export class DistributionService {
     return distribution;
   }
 
+  async fromCampaignParam(externalCampaignId: string, externalParamId: string) {
+    const campaign =
+      await this.campaign.findByExternalCampaignId(externalCampaignId);
+    if (!campaign) {
+      throw new NotFoundException(
+        `Campaign with external ID ${externalCampaignId} not found`,
+      );
+    }
+
+    // find the param (will create it if it doesn't exist)
+    const param = await this.paramService.insert(
+      externalParamId,
+      externalCampaignId,
+      {
+        type: "placement",
+      },
+    );
+
+    if (!param) {
+      throw new NotFoundException(
+        `Param with external ID ${externalParamId} not found`,
+      );
+    }
+
+    // see if a distribution already exists
+    const existingDistributions = await this.prisma.distribution.findMany({
+      where: {
+        campaignId: campaign.id,
+        paramId: param.id,
+      },
+    });
+
+    if (existingDistributions.length > 0) {
+      // cache the existing distributions
+      await Promise.all(
+        existingDistributions.map((dist) => this.cache(dist.id, dist)),
+      );
+      return existingDistributions;
+    }
+
+    const distribution = await this.prisma.distribution.create({
+      data: {
+        campaign: {
+          connect: { id: campaign.id },
+        },
+        param: {
+          connect: { id: param.id },
+        },
+        status: "active",
+        priority: 10, // default priority
+        metadata: {
+          //   domain: campaign.metadata?.domain || "unknown-site.com",
+          //   page: campaign.metadata?.placements?.[0] || "all",
+          //   fallback: param.metadata?.isFallback || false,
+        },
+      },
+    });
+
+    return distribution;
+  }
   async updateDistribution(id: string, data: Partial<CreateDistributionDto>) {
     return this.prisma.distribution.update({
       where: { id },
