@@ -4,7 +4,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { RedisService } from "src/redis/redis.service";
 import { SessionService } from "src/session/session.service";
 import { ProductService } from "src/product/product.service";
-import { Distribution } from "@prisma/client";
+import { Distribution, Prisma } from "@prisma/client";
 import { ClickService } from "src/click/click.service";
 import { ImpressionService } from "src/impression/impression.service";
 import { SessionDto } from "src/session/session.dto";
@@ -32,6 +32,9 @@ export class RedirectService {
         where: {
           campaignId: campaign.id,
           status: "active",
+          productId: {
+            isSet: true,
+          },
         },
         take: 10,
         orderBy: {
@@ -74,6 +77,12 @@ export class RedirectService {
     const { productId, id, campaignId } =
       await this.weightDistributions(distributions);
     if (!productId) {
+      console.error(
+        "No product ID found in distribution",
+        productId,
+        id,
+        campaignId,
+      );
       throw new NotFoundException("No product found for the distribution");
     }
     const product = await this.product.findById(productId);
@@ -93,19 +102,35 @@ export class RedirectService {
     return url;
   }
 
-  async place({ placementId }: { placementId?: string }) {
+  async place({
+    placementId,
+    siloId,
+  }: { placementId?: string; siloId?: string }) {
     // This method is a placeholder for future implementation
     // lets look through params to find a matching placementId
-    if (!placementId) {
-      this.logger.warn("Placement ID is required for placing a redirect");
-      throw new NotFoundException("Placement ID is required");
+    if (!placementId && !siloId) {
+      this.logger.warn(
+        "Placement ID or Silo ID is required for placing a redirect",
+      );
+      throw new NotFoundException("Placement ID or Silo ID is required");
     }
 
+    const where: Prisma.DistributionWhereInput = {};
+
+    if (placementId) {
+      where.param = {
+        placementId,
+      };
+    }
+
+    if (siloId) {
+      where.param = {
+        siloId,
+      };
+    }
     const distribution = await this.prisma.distribution.findFirst({
       where: {
-        param: {
-          placementId,
-        },
+        ...where,
         campaign: {
           status: "active",
         },
@@ -117,12 +142,14 @@ export class RedirectService {
     });
 
     if (!distribution) {
-      this.logger.warn(`No distribution found for placementId: ${placementId}`);
+      this.logger.warn(
+        `No distribution found for id: ${placementId || siloId}`,
+      );
       throw new NotFoundException("No matching distribution found");
     }
 
     this.logger.log(
-      `Found distribution for placementId ${placementId}: ${distribution.id}`,
+      `Found distribution for id ${placementId || siloId}: ${distribution.id}`,
     );
 
     // Implement the logic for placing the redirect

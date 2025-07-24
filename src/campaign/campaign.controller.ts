@@ -5,14 +5,11 @@ import {
   Post,
   Body,
   Param,
-  // Patch,
-  // Delete,
   NotFoundException,
   Patch,
 } from "@nestjs/common";
 import { CampaignService } from "./campaign.service";
 import { CreateCampaignDto, UpdateCampaignDto } from "./campaign.dto";
-// import { CreateProductDto } from "src/product/product.dto";
 
 @Controller("campaign")
 export class CampaignController {
@@ -95,24 +92,8 @@ export class CampaignController {
     };
   }
 
-  // @Patch("/:campaignId/product/:externalProductId")
-  // addProductToCampaign(
-  //   @Param("campaignId") campaignId: string,
-  //   @Param("externalProductId") externalProductId: string,
-  // ) {
-  //   return this.campaignService.attachProductToCampaign(
-  //     campaignId,
-  //     externalProductId,
-  //   );
-  // }
-
   @Patch(":id")
   update(@Param("id") id: string, @Body() dto: UpdateCampaignDto) {
     return this.campaignService.update(id, dto);
   }
-
-  // @Delete(":id")
-  // delete(@Param("id") id: string) {
-  //   return this.campaignService.delete(id);
-  // }
 }
