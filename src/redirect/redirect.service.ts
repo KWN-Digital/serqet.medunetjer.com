@@ -134,6 +134,9 @@ export class RedirectService {
         campaign: {
           status: "active",
         },
+        paramId: {
+          isSet: true, // Ensure paramId is set
+        },
       },
       include: {
         param: true,
